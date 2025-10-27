@@ -1,7 +1,6 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 from datetime import datetime
-import pytz
 import traceback
 
 # ملف محسّن لواجهة نقطة البيع (SalesUI)
@@ -19,10 +18,6 @@ class SalesUI:
         self.parent = parent
         self.db = db
         self.cart = []
-        try:
-            self.syria_tz = pytz.timezone('Asia/Damascus')
-        except Exception:
-            self.syria_tz = pytz.utc
 
         # عناصر ستتم تهيئتها في setup
         self.products_tree = None
@@ -129,23 +124,27 @@ class SalesUI:
         header_frame = ttk.Frame(self.inner)
         header_frame.pack(fill='x', padx=12, pady=12)
 
-        ttk.Label(header_frame, text='💰 نظام نقطة البيع (POS)', font=('Arial', 18, 'bold')).pack(side='right')
+        ttk.Label(header_frame, text='💰 نظام نقطة البيع (POS)', font=('Arial', 18, 'bold')).pack(side='left')
 
         controls = ttk.Frame(header_frame)
-        controls.pack(side='left')
+        controls.pack(side='right')
 
         ttk.Button(controls, text='🔄 تحديث', command=self.load_products).pack(side='left', padx=6)
         ttk.Button(controls, text='📋 الكل', command=self.show_all_products).pack(side='left', padx=6)
 
-        # المحتوى الرئيسى (منتجات + سلة)
+        # المحتوى الرئيسى (منتجات + سلة) using grid
         content_frame = ttk.Frame(self.inner)
         content_frame.pack(fill='both', expand=True, padx=12, pady=6)
+        content_frame.columnconfigure(0, weight=1) # Cart container
+        content_frame.columnconfigure(1, weight=3) # Products container (takes more space)
+        content_frame.rowconfigure(0, weight=1)
 
         products_container = ttk.Frame(content_frame)
-        products_container.pack(side='right', fill='both', expand=True, padx=(6, 4))
+        products_container.grid(row=0, column=1, sticky='nsew', padx=(4, 6))
 
-        cart_container = ttk.Frame(content_frame, width=380)
-        cart_container.pack(side='left', fill='y', padx=(4, 6))
+        cart_container = ttk.Frame(content_frame)
+        cart_container.grid(row=0, column=0, sticky='nsew', padx=(6, 4))
+
 
         # اقسام
         self.setup_products_section(products_container)
@@ -163,15 +162,15 @@ class SalesUI:
         controls.pack(fill='x', pady=(0, 8))
 
         search_group = ttk.Frame(controls)
-        search_group.pack(side='right', fill='x', expand=True)
+        search_group.pack(side='left', fill='x', expand=True)
 
-        ttk.Label(search_group, text='🔍 بحث سريع:', font=('Arial', 11)).pack(side='right', padx=6)
+        ttk.Label(search_group, text='🔍 بحث سريع:', font=('Arial', 11)).pack(side='left', padx=6)
         self.search_entry = ttk.Entry(search_group, font=('Arial', 11))
-        self.search_entry.pack(side='right', fill='x', expand=True, padx=6)
+        self.search_entry.pack(side='left', fill='x', expand=True, padx=6)
         self.search_entry.bind('<KeyRelease>', lambda e: self.search_products())
 
         btn_group = ttk.Frame(controls)
-        btn_group.pack(side='left')
+        btn_group.pack(side='right')
         ttk.Button(btn_group, text='🔄 تحديث', command=self.load_products).pack(side='left', padx=4)
         ttk.Button(btn_group, text='📋 الكل', command=self.show_all_products).pack(side='left', padx=4)
 
@@ -245,9 +244,9 @@ class SalesUI:
         controls = ttk.Frame(frame)
         controls.pack(fill='x', pady=8)
 
-        ttk.Button(controls, text='🗑️ حذف المحدد', command=self.remove_from_cart).pack(side='right', padx=4)
-        ttk.Button(controls, text='✏️ تعديل الكمية', command=self.edit_quantity).pack(side='right', padx=4)
-        ttk.Button(controls, text='🧹 مسح السلة', command=self.clear_cart).pack(side='right', padx=4)
+        ttk.Button(controls, text='🧹 مسح السلة', command=self.clear_cart).pack(side='left', padx=4)
+        ttk.Button(controls, text='✏️ تعديل الكمية', command=self.edit_quantity).pack(side='left', padx=4)
+        ttk.Button(controls, text='🗑️ حذف المحدد', command=self.remove_from_cart).pack(side='left', padx=4)
 
         # إجماليات
         totals = ttk.LabelFrame(frame, text='💰 الإجماليات', padding=6)
@@ -255,31 +254,31 @@ class SalesUI:
 
         syp_row = ttk.Frame(totals)
         syp_row.pack(fill='x', pady=3)
-        ttk.Label(syp_row, text='الإجمالي (ل.س):', font=('Arial', 11)).pack(side='right', padx=6)
+        ttk.Label(syp_row, text='الإجمالي (ل.س):', font=('Arial', 11)).pack(side='left', padx=6)
         self.total_syp_label = ttk.Label(syp_row, text='0.00', font=('Arial', 12, 'bold'))
-        self.total_syp_label.pack(side='right', padx=6)
+        self.total_syp_label.pack(side='left', padx=6)
 
         usd_row = ttk.Frame(totals)
         usd_row.pack(fill='x', pady=3)
-        ttk.Label(usd_row, text='الإجمالي (دولار):', font=('Arial', 11)).pack(side='right', padx=6)
+        ttk.Label(usd_row, text='الإجمالي (دولار):', font=('Arial', 11)).pack(side='left', padx=6)
         self.total_usd_label = ttk.Label(usd_row, text='0.00', font=('Arial', 12, 'bold'))
-        self.total_usd_label.pack(side='right', padx=6)
+        self.total_usd_label.pack(side='left', padx=6)
 
         # خصومات
         disc = ttk.LabelFrame(frame, text='🎁 الخصومات', padding=6)
         disc.pack(fill='x', pady=6)
         drow = ttk.Frame(disc)
         drow.pack(fill='x')
-        ttk.Label(drow, text='خصم (ل.س):').pack(side='right', padx=6)
+        ttk.Label(drow, text='خصم (ل.س):').pack(side='left', padx=6)
         self.discount_syp_entry = ttk.Entry(drow, width=12)
         self.discount_syp_entry.insert(0, '0')
-        self.discount_syp_entry.pack(side='right', padx=6)
+        self.discount_syp_entry.pack(side='left', padx=6)
         self.discount_syp_entry.bind('<KeyRelease>', lambda e: self.update_totals())
 
-        ttk.Label(drow, text='خصم ($):').pack(side='right', padx=6)
+        ttk.Label(drow, text='خصم ($):').pack(side='left', padx=6)
         self.discount_usd_entry = ttk.Entry(drow, width=12)
         self.discount_usd_entry.insert(0, '0')
-        self.discount_usd_entry.pack(side='right', padx=6)
+        self.discount_usd_entry.pack(side='left', padx=6)
         self.discount_usd_entry.bind('<KeyRelease>', lambda e: self.update_totals())
 
         # إعدادات البيع
@@ -287,20 +286,20 @@ class SalesUI:
         settings.pack(fill='x', pady=6)
         pay_row = ttk.Frame(settings)
         pay_row.pack(fill='x')
-        ttk.Label(pay_row, text='طريقة الدفع:').pack(side='right', padx=6)
+        ttk.Label(pay_row, text='طريقة الدفع:').pack(side='left', padx=6)
         payment_combo = ttk.Combobox(pay_row, textvariable=self.payment_var, values=['نقدي', 'بطاقة ائتمان', 'تحويل بنكي', 'آجل'], state='readonly', width=18)
-        payment_combo.pack(side='right', padx=6)
+        payment_combo.pack(side='left', padx=6)
 
         notes_row = ttk.Frame(settings)
         notes_row.pack(fill='x', pady=6)
-        ttk.Label(notes_row, text='ملاحظات:').pack(side='right', padx=6)
+        ttk.Label(notes_row, text='ملاحظات:').pack(side='left', padx=6)
         self.notes_text = tk.Text(notes_row, height=4, width=30)
-        self.notes_text.pack(side='right', fill='x', expand=True, padx=6)
+        self.notes_text.pack(side='left', fill='x', expand=True, padx=6)
 
         # أزرار الإجراء
         action_row = ttk.Frame(frame)
         action_row.pack(fill='x', pady=8)
-        ttk.Button(action_row, text='✅ إتمام عملية البيع', command=self.complete_sale, style='success.TButton').pack(side='right')
+        ttk.Button(action_row, text='✅ إتمام عملية البيع', command=self.complete_sale, style='success.TButton').pack(side='left')
 
     # ------------------ وظائف تحميل/بحث ------------------
     def load_products(self):
@@ -586,7 +585,7 @@ class SalesUI:
             INSERT INTO sales (total_syp, total_usd, payment_method, discount_syp, discount_usd, notes, sale_date)
             VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
-            (total_syp, total_usd, payment_method, discount_syp, discount_usd, notes, datetime.now(self.syria_tz).isoformat())
+            (total_syp, total_usd, payment_method, discount_syp, discount_usd, notes, datetime.now().isoformat())
         ):
             messagebox.showerror('خطأ', 'فشل في تسجيل عملية البيع')
             return
@@ -605,7 +604,7 @@ class SalesUI:
                 # تحديث المخزون
                 self.safe_execute("UPDATE products SET quantity = quantity - ? WHERE id = ?", (item['quantity'], item['product_id']))
                 # تسجيل حركة المخزون
-                self.safe_execute("INSERT INTO inventory_movements (product_id, movement_type, quantity, reason, moved_at) VALUES (?, 'out', ?, 'بيع', ?)", (item['product_id'], item['quantity'], datetime.now(self.syria_tz).isoformat()))
+                self.safe_execute("INSERT INTO inventory_movements (product_id, movement_type, quantity, reason, moved_at) VALUES (?, 'out', ?, 'بيع', ?)", (item['product_id'], item['quantity'], datetime.now().isoformat()))
 
             messagebox.showinfo('تم', f'تم تسجيل البيع بنجاح\nرقم الفاتورة: {sale_id or "-"}')
 

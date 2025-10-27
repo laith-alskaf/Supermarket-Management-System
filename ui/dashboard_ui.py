@@ -6,14 +6,11 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 from utils.arabic_helper import prepare_arabic_text
 import matplotlib.font_manager as fm
-import pytz
 
 class DashboardUI:
     def __init__(self, parent, db):
         self.parent = parent
         self.db = db
-        # توقيت سوريا (GMT+3)
-        self.syria_tz = pytz.timezone('Asia/Damascus')
         self.setup_ui()
         
     def setup_ui(self):
@@ -50,8 +47,7 @@ class DashboardUI:
         stats_frame.pack(fill='x', padx=20, pady=10)
         
         # الحصول على البيانات
-        syria_time = datetime.now(self.syria_tz)
-        today = syria_time.strftime('%Y-%m-%d')
+        today = datetime.now().strftime('%Y-%m-%d')
         
         # مبيعات اليوم
         sales_today = self.db.fetch_one(
@@ -79,6 +75,9 @@ class DashboardUI:
         self.create_stat_card(stats_frame, "عدد المنتجات", str(products_count), "info", 1)
         self.create_stat_card(stats_frame, "منتجات قريبة من النفاد", str(low_stock), "warning", 2)
         self.create_stat_card(stats_frame, "عدد الموردين", str(suppliers_count), "primary", 3)
+
+        for i in range(4):
+            stats_frame.columnconfigure(i, weight=1)
         
         # إطار الرسوم البيانية
         charts_frame = ttk.Frame(scrollable_frame)
@@ -94,8 +93,7 @@ class DashboardUI:
     def create_stat_card(self, parent, title, value, color, column):
         """إنشاء بطاقة إحصائيات"""
         card = ttk.Frame(parent, style=f'{color}.TFrame', relief='raised', borderwidth=2)
-        card.grid(row=0, column=column, padx=10, pady=10, sticky='ew')
-        parent.columnconfigure(column, weight=1)
+        card.grid(row=0, column=column, padx=10, pady=10, sticky='nsew')
         
         # العنوان
         title_label = ttk.Label(
@@ -121,9 +119,8 @@ class DashboardUI:
         dates = []
         sales = []
         
-        syria_time = datetime.now(self.syria_tz)
         for i in range(6, -1, -1):
-            date = (syria_time - timedelta(days=i)).strftime('%Y-%m-%d')
+            date = (datetime.now() - timedelta(days=i)).strftime('%Y-%m-%d')
             dates.append(date)
             
             result = self.db.fetch_one(

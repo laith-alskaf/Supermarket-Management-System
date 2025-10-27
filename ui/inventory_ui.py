@@ -1,14 +1,11 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 from datetime import datetime
-import pytz
 
 class InventoryUI:
     def __init__(self, parent, db):
         self.parent = parent
         self.db = db
-        # توقيت سوريا (GMT+3)
-        self.syria_tz = pytz.timezone('Asia/Damascus')
         self.setup_ui()
         self.load_inventory()
         
@@ -160,7 +157,8 @@ class InventoryUI:
             return
         
         values = self.tree.item(selected[0])['values']
-        product_id, name, category, current_qty = values[0], values[1], values[2], values[3]
+        product_id, name, category, current_qty_str = values[0], values[1], values[2], values[3]
+        current_qty = float(current_qty_str)
         
         # نافذة التعديل
         dialog = tk.Toplevel(self.parent)
@@ -202,7 +200,7 @@ class InventoryUI:
         
         ttk.Label(
             info_frame,
-            text=f"الكمية الحالية: {current_qty}",
+            text=f"الكمية الحالية: {current_qty_str}",
             font=('Arial', 11),
             foreground='#27ae60',
             anchor='e'
@@ -273,9 +271,8 @@ class InventoryUI:
             operation = operation_var.get()
             reason = reason_entry.get().strip() or 'تعديل يدوي'
             
-            # الحصول على التاريخ والوقت الحالي بتوقيت سوريا
-            syria_time = datetime.now(self.syria_tz)
-            movement_date = syria_time.strftime('%Y-%m-%d %H:%M:%S')
+            # الحصول على التاريخ والوقت الحالي
+            movement_date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             
             if operation == 'add':
                 # إضافة
@@ -284,7 +281,7 @@ class InventoryUI:
                     (quantity, movement_date, product_id)
                 ):
                     self.db.execute_query(
-                        """INSERT INTO inventory_movements (product_id, movement_type, quantity, reason, movement_date)
+                        """INSERT INTO inventory_movements (product_id, movement_type, quantity, reason, moved_at)
                            VALUES (?, 'in', ?, ?, ?)""",
                         (product_id, quantity, reason, movement_date)
                     )
@@ -306,7 +303,7 @@ class InventoryUI:
                     (quantity, movement_date, product_id)
                 ):
                     self.db.execute_query(
-                        """INSERT INTO inventory_movements (product_id, movement_type, quantity, reason, movement_date)
+                        """INSERT INTO inventory_movements (product_id, movement_type, quantity, reason, moved_at)
                            VALUES (?, 'out', ?, ?, ?)""",
                         (product_id, quantity, reason, movement_date)
                     )

@@ -40,11 +40,11 @@ class SupermarketApp:
         # شريط الأدوات العلوي
         self.setup_top_bar(main_frame)
         
-        # القائمة الجانبية
-        self.setup_sidebar(main_frame)
-        
         # منطقة المحتوى
         self.setup_content_area(main_frame)
+
+        # القائمة الجانبية
+        self.setup_sidebar(main_frame)
         
         # عرض لوحة التحكم افتراضياً
         self.show_dashboard()
@@ -62,11 +62,11 @@ class SupermarketApp:
             font=('Arial', 18, 'bold'),
             style='primary.TLabel'
         )
-        title_label.pack(side='right', padx=20, pady=10)
+        title_label.pack(side='left', padx=20, pady=10)
         
         # أزرار التحكم
         control_frame = ttk.Frame(top_bar, style='primary.TFrame')
-        control_frame.pack(side='left', padx=20, pady=10)
+        control_frame.pack(side='right', padx=20, pady=10)
         
         # زر طي/فتح القائمة الجانبية
         self.toggle_btn = ttk.Button(
@@ -102,7 +102,7 @@ class SupermarketApp:
         """إعداد القائمة الجانبية القابلة للطي"""
         # إطار القائمة الجانبية
         self.sidebar = ttk.Frame(parent, width=250, style='secondary.TFrame')
-        self.sidebar.pack(side='right', fill='y', padx=2, pady=2)
+        self.sidebar.pack(side='left', fill='y', padx=2, pady=2)
         self.sidebar.pack_propagate(False)
         
         # عنوان القائمة
@@ -192,7 +192,7 @@ class SupermarketApp:
     def setup_content_area(self, parent):
         """إعداد منطقة المحتوى"""
         self.content_frame = ttk.Frame(parent, style='light.TFrame')
-        self.content_frame.pack(side='right', fill='both', expand=True, padx=10, pady=10)
+        self.content_frame.pack(side='left', fill='both', expand=True, padx=10, pady=10)
     
     def toggle_sidebar(self):
         """طي أو فتح القائمة الجانبية"""
