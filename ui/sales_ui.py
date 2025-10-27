@@ -11,16 +11,35 @@ class SalesUI:
         
     def setup_ui(self):
         """إعداد واجهة نقطة البيع"""
+        # إنشاء Canvas و Scrollbar للسكرول
+        main_canvas = tk.Canvas(self.parent)
+        scrollbar = ttk.Scrollbar(self.parent, orient="vertical", command=main_canvas.yview)
+        scrollable_frame = ttk.Frame(main_canvas)
+        
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: main_canvas.configure(scrollregion=main_canvas.bbox("all"))
+        )
+        
+        main_canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        main_canvas.configure(yscrollcommand=scrollbar.set)
+        
+        # تفعيل السكرول بالماوس
+        def _on_mousewheel(event):
+            main_canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+        
+        main_canvas.bind_all("<MouseWheel>", _on_mousewheel)
+        
         # العنوان
         title = ttk.Label(
-            self.parent,
+            scrollable_frame,
             text="نقطة البيع - POS",
             font=('Arial', 20, 'bold')
         )
         title.pack(pady=20)
         
         # الإطار الرئيسي
-        main_frame = ttk.Frame(self.parent)
+        main_frame = ttk.Frame(scrollable_frame)
         main_frame.pack(fill='both', expand=True, padx=20)
         
         # الجانب الأيمن - اختيار المنتجات
@@ -37,8 +56,11 @@ class SalesUI:
         self.search_entry.bind('<KeyRelease>', lambda e: self.search_products())
         
         # جدول المنتجات
+        products_frame = ttk.Frame(left_frame)
+        products_frame.pack(fill='both', expand=True)
+        
         columns = ('id', 'name', 'price_syp', 'price_usd', 'quantity')
-        self.products_tree = ttk.Treeview(left_frame, columns=columns, show='headings', height=20)
+        self.products_tree = ttk.Treeview(products_frame, columns=columns, show='headings', height=15)
         
         self.products_tree.heading('id', text='الرقم')
         self.products_tree.heading('name', text='اسم المنتج')
@@ -52,11 +74,11 @@ class SalesUI:
         self.products_tree.column('price_usd', width=100, anchor='center')
         self.products_tree.column('quantity', width=80, anchor='center')
         
-        scrollbar = ttk.Scrollbar(left_frame, orient='vertical', command=self.products_tree.yview)
-        self.products_tree.configure(yscrollcommand=scrollbar.set)
+        products_scrollbar = ttk.Scrollbar(products_frame, orient='vertical', command=self.products_tree.yview)
+        self.products_tree.configure(yscrollcommand=products_scrollbar.set)
         
         self.products_tree.pack(side='right', fill='both', expand=True)
-        scrollbar.pack(side='left', fill='y')
+        products_scrollbar.pack(side='left', fill='y')
         
         self.products_tree.bind('<Double-1>', self.add_to_cart)
         
@@ -65,8 +87,11 @@ class SalesUI:
         right_frame.pack(side='left', fill='both', expand=True)
         
         # جدول السلة
+        cart_frame = ttk.Frame(right_frame)
+        cart_frame.pack(fill='both', expand=True, pady=10)
+        
         cart_columns = ('product_id', 'name', 'quantity', 'unit_price_syp', 'unit_price_usd', 'total_syp', 'total_usd')
-        self.cart_tree = ttk.Treeview(right_frame, columns=cart_columns, show='headings', height=15)
+        self.cart_tree = ttk.Treeview(cart_frame, columns=cart_columns, show='headings', height=12)
         
         self.cart_tree.heading('product_id', text='#')
         self.cart_tree.heading('name', text='المنتج')
@@ -84,7 +109,11 @@ class SalesUI:
         self.cart_tree.column('total_syp', width=100, anchor='center')
         self.cart_tree.column('total_usd', width=80, anchor='center')
         
-        self.cart_tree.pack(fill='both', expand=True, pady=10)
+        cart_scrollbar = ttk.Scrollbar(cart_frame, orient='vertical', command=self.cart_tree.yview)
+        self.cart_tree.configure(yscrollcommand=cart_scrollbar.set)
+        
+        self.cart_tree.pack(side='right', fill='both', expand=True)
+        cart_scrollbar.pack(side='left', fill='y')
         
         # أزرار السلة
         cart_buttons = ttk.Frame(right_frame)
@@ -158,6 +187,10 @@ class SalesUI:
         
         # تحميل المنتجات
         self.load_products()
+        
+        # عرض Canvas و Scrollbar
+        main_canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
     
     def load_products(self):
         """تحميل المنتجات"""
@@ -190,64 +223,158 @@ class SalesUI:
         """إضافة منتج للسلة"""
         selected = self.products_tree.selection()
         if not selected:
+            messagebox.showwarning("تنبيه", "يرجى اختيار منتج")
             return
         
         values = self.products_tree.item(selected[0])['values']
         product_id, name, price_syp, price_usd, available_qty = values
         
-        # طلب الكمية
+        # إنشاء نافذة الحوار
         quantity_dialog = tk.Toplevel(self.parent)
         quantity_dialog.title("إدخال الكمية")
-        quantity_dialog.geometry("300x150")
+        quantity_dialog.resizable(False, False)
         quantity_dialog.transient(self.parent)
         quantity_dialog.grab_set()
         
-        ttk.Label(quantity_dialog, text=f"المنتج: {name}", font=('Arial', 11)).pack(pady=10)
-        ttk.Label(quantity_dialog, text=f"المتوفر: {available_qty}", font=('Arial', 10)).pack(pady=5)
+        # الإطار الرئيسي مع padding
+        container = ttk.Frame(quantity_dialog, padding=20)
+        container.pack(fill='both', expand=True)
         
-        ttk.Label(quantity_dialog, text="الكمية:", font=('Arial', 11)).pack(pady=10)
-        quantity_entry = ttk.Entry(quantity_dialog, font=('Arial', 11), width=15)
+        # عنوان
+        title_label = ttk.Label(
+            container,
+            text="إضافة منتج إلى السلة",
+            font=('Arial', 14, 'bold'),
+            foreground='#2c3e50'
+        )
+        title_label.pack(pady=(0, 15))
+        
+        # معلومات المنتج
+        info_frame = ttk.LabelFrame(container, text="معلومات المنتج", padding=10)
+        info_frame.pack(fill='x', pady=(0, 10))
+        
+        ttk.Label(
+            info_frame,
+            text=f"المنتج: {name}",
+            font=('Arial', 11, 'bold')
+        ).pack(anchor='e', pady=3)
+        
+        ttk.Label(
+            info_frame,
+            text=f"السعر: {price_syp:.2f} ل.س",
+            font=('Arial', 10)
+        ).pack(anchor='e', pady=3)
+        
+        ttk.Label(
+            info_frame,
+            text=f"الكمية المتوفرة: {available_qty}",
+            font=('Arial', 10),
+            foreground='#27ae60'
+        ).pack(anchor='e', pady=3)
+        
+        # إدخال الكمية
+        input_frame = ttk.LabelFrame(container, text="الكمية المطلوبة", padding=10)
+        input_frame.pack(fill='x', pady=(0, 10))
+        
+        quantity_entry = ttk.Entry(
+            input_frame,
+            font=('Arial', 14),
+            width=25,
+            justify='center'
+        )
         quantity_entry.pack(pady=5)
         quantity_entry.insert(0, '1')
         quantity_entry.focus()
+        quantity_entry.select_range(0, tk.END)
         
-        def add():
+        # دالة الإضافة
+        def add_to_cart_action():
             try:
-                quantity = float(quantity_entry.get())
-                if quantity <= 0:
-                    messagebox.showerror("خطأ", "الكمية يجب أن تكون أكبر من صفر")
-                    return
-                if quantity > available_qty:
-                    messagebox.showerror("خطأ", f"الكمية المتوفرة: {available_qty}")
+                qty_text = quantity_entry.get().strip()
+                if not qty_text:
+                    messagebox.showerror("خطأ", "الرجاء إدخال الكمية", parent=quantity_dialog)
+                    quantity_entry.focus()
                     return
                 
-                # إضافة للسلة
-                total_syp = quantity * price_syp
-                total_usd = quantity * price_usd
+                qty = float(qty_text)
                 
+                if qty <= 0:
+                    messagebox.showerror("خطأ", "الكمية يجب أن تكون أكبر من صفر", parent=quantity_dialog)
+                    quantity_entry.focus()
+                    quantity_entry.select_range(0, tk.END)
+                    return
+                
+                if qty > available_qty:
+                    messagebox.showerror("خطأ", f"الكمية المتوفرة فقط: {available_qty}", parent=quantity_dialog)
+                    quantity_entry.focus()
+                    quantity_entry.select_range(0, tk.END)
+                    return
+                
+                # حساب الإجماليات
+                total_syp = qty * price_syp
+                total_usd = qty * price_usd
+                
+                # إضافة إلى السلة
                 self.cart.append({
                     'product_id': product_id,
                     'name': name,
-                    'quantity': quantity,
+                    'quantity': qty,
                     'unit_price_syp': price_syp,
                     'unit_price_usd': price_usd,
                     'total_syp': total_syp,
                     'total_usd': total_usd
                 })
                 
+                # تحديث العرض
                 self.update_cart_display()
+                
+                # إغلاق النافذة
                 quantity_dialog.destroy()
+                
+                # رسالة نجاح
+                messagebox.showinfo("نجاح", f"تمت إضافة '{name}' إلى السلة بنجاح")
+                
             except ValueError:
-                messagebox.showerror("خطأ", "يرجى إدخال رقم صحيح")
+                messagebox.showerror("خطأ", "الرجاء إدخال رقم صحيح", parent=quantity_dialog)
+                quantity_entry.focus()
+                quantity_entry.select_range(0, tk.END)
         
-        ttk.Button(
-            quantity_dialog,
-            text="إضافة",
-            command=add,
-            style='success.TButton'
-        ).pack(pady=10)
+        # الأزرار
+        button_frame = ttk.Frame(container)
+        button_frame.pack(fill='x', pady=(10, 0))
         
-        quantity_entry.bind('<Return>', lambda e: add())
+        # زر الإضافة
+        add_button = ttk.Button(
+            button_frame,
+            text="✓ إضافة",
+            command=add_to_cart_action,
+            style='success.TButton',
+            width=15
+        )
+        add_button.pack(side='right', padx=5)
+        
+        # زر الإلغاء
+        cancel_button = ttk.Button(
+            button_frame,
+            text="✕ إلغاء",
+            command=quantity_dialog.destroy,
+            style='danger.TButton',
+            width=15
+        )
+        cancel_button.pack(side='left', padx=5)
+        
+        # ربط المفاتيح
+        quantity_entry.bind('<Return>', lambda e: add_to_cart_action())
+        quantity_entry.bind('<KP_Enter>', lambda e: add_to_cart_action())
+        quantity_dialog.bind('<Escape>', lambda e: quantity_dialog.destroy())
+        
+        # تحديد حجم النافذة بعد إضافة جميع العناصر
+        quantity_dialog.update_idletasks()
+        width = 450
+        height = 350
+        x = (quantity_dialog.winfo_screenwidth() // 2) - (width // 2)
+        y = (quantity_dialog.winfo_screenheight() // 2) - (height // 2)
+        quantity_dialog.geometry(f"{width}x{height}+{x}+{y}")
     
     def update_cart_display(self):
         """تحديث عرض السلة"""

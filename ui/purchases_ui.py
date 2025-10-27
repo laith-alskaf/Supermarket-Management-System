@@ -78,14 +78,33 @@ class PurchasesUI:
         """عرض نافذة إضافة مشتريات"""
         dialog = tk.Toplevel(self.parent)
         dialog.title("إضافة مشتريات جديدة")
-        dialog.geometry("1000x700")
+        dialog.geometry("1100x750")
         dialog.transient(self.parent)
         dialog.grab_set()
         
         self.cart = []
         
+        # إنشاء Canvas و Scrollbar للسكرول
+        main_canvas = tk.Canvas(dialog)
+        scrollbar = ttk.Scrollbar(dialog, orient="vertical", command=main_canvas.yview)
+        scrollable_frame = ttk.Frame(main_canvas)
+        
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: main_canvas.configure(scrollregion=main_canvas.bbox("all"))
+        )
+        
+        main_canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        main_canvas.configure(yscrollcommand=scrollbar.set)
+        
+        # تفعيل السكرول بالماوس
+        def _on_mousewheel(event):
+            main_canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+        
+        main_canvas.bind_all("<MouseWheel>", _on_mousewheel)
+        
         # إطار المعلومات الأساسية
-        info_frame = ttk.LabelFrame(dialog, text="معلومات المشتريات", padding=10)
+        info_frame = ttk.LabelFrame(scrollable_frame, text="معلومات المشتريات", padding=10)
         info_frame.pack(fill='x', padx=20, pady=10)
         
         # المورد
@@ -99,7 +118,7 @@ class PurchasesUI:
         supplier_combo.grid(row=0, column=0, padx=10, pady=10)
         
         # إطار المنتجات
-        products_frame = ttk.LabelFrame(dialog, text="إضافة منتجات", padding=10)
+        products_frame = ttk.LabelFrame(scrollable_frame, text="إضافة منتجات", padding=10)
         products_frame.pack(fill='both', expand=True, padx=20, pady=10)
         
         # اختيار المنتج
@@ -159,8 +178,11 @@ class PurchasesUI:
         ).pack(side='left', padx=10)
         
         # جدول المنتجات
+        cart_frame = ttk.Frame(products_frame)
+        cart_frame.pack(fill='both', expand=True, pady=10)
+        
         cart_columns = ('name', 'quantity', 'price_syp', 'price_usd', 'total_syp', 'total_usd')
-        cart_tree = ttk.Treeview(products_frame, columns=cart_columns, show='headings', height=10)
+        cart_tree = ttk.Treeview(cart_frame, columns=cart_columns, show='headings', height=8)
         
         cart_tree.heading('name', text='المنتج')
         cart_tree.heading('quantity', text='الكمية')
@@ -169,7 +191,11 @@ class PurchasesUI:
         cart_tree.heading('total_syp', text='مجموع (ل.س)')
         cart_tree.heading('total_usd', text='مجموع ($)')
         
-        cart_tree.pack(fill='both', expand=True)
+        cart_scrollbar = ttk.Scrollbar(cart_frame, orient='vertical', command=cart_tree.yview)
+        cart_tree.configure(yscrollcommand=cart_scrollbar.set)
+        
+        cart_tree.pack(side='right', fill='both', expand=True)
+        cart_scrollbar.pack(side='left', fill='y')
         
         def update_cart():
             for item in cart_tree.get_children():
@@ -200,7 +226,7 @@ class PurchasesUI:
         total_usd_label.pack(side='left', padx=10)
         
         # إطار الدفع
-        payment_frame = ttk.LabelFrame(dialog, text="معلومات الدفع", padding=10)
+        payment_frame = ttk.LabelFrame(scrollable_frame, text="معلومات الدفع", padding=10)
         payment_frame.pack(fill='x', padx=20, pady=10)
         
         ttk.Label(payment_frame, text="طريقة الدفع:", font=('Arial', 11)).grid(row=0, column=1, padx=10, pady=10, sticky='e')
@@ -288,17 +314,29 @@ class PurchasesUI:
                         )
                 
                 messagebox.showinfo("نجاح", f"تم تسجيل المشتريات بنجاح\nرقم: {purchase_id}")
+                main_canvas.unbind_all("<MouseWheel>")
                 dialog.destroy()
                 self.load_purchases()
             else:
                 messagebox.showerror("خطأ", "فشل في حفظ المشتريات")
         
         ttk.Button(
-            dialog,
+            scrollable_frame,
             text="✓ حفظ المشتريات",
             command=save_purchase,
             style='success.TButton'
         ).pack(fill='x', padx=20, pady=20)
+        
+        # عرض Canvas و Scrollbar
+        main_canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+        
+        # تنظيف عند إغلاق النافذة
+        def on_closing():
+            main_canvas.unbind_all("<MouseWheel>")
+            dialog.destroy()
+        
+        dialog.protocol("WM_DELETE_WINDOW", on_closing)
     
     def show_purchase_details(self, event):
         """عرض تفاصيل مشتريات"""

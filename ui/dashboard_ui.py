@@ -4,6 +4,8 @@ from datetime import datetime, timedelta
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
+from utils.arabic_helper import prepare_arabic_text
+import matplotlib.font_manager as fm
 
 class DashboardUI:
     def __init__(self, parent, db):
@@ -13,16 +15,35 @@ class DashboardUI:
         
     def setup_ui(self):
         """إعداد واجهة لوحة التحكم"""
+        # إنشاء Canvas و Scrollbar للسكرول
+        main_canvas = tk.Canvas(self.parent)
+        scrollbar = ttk.Scrollbar(self.parent, orient="vertical", command=main_canvas.yview)
+        scrollable_frame = ttk.Frame(main_canvas)
+        
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: main_canvas.configure(scrollregion=main_canvas.bbox("all"))
+        )
+        
+        main_canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        main_canvas.configure(yscrollcommand=scrollbar.set)
+        
+        # تفعيل السكرول بالماوس
+        def _on_mousewheel(event):
+            main_canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+        
+        main_canvas.bind_all("<MouseWheel>", _on_mousewheel)
+        
         # العنوان
         title = ttk.Label(
-            self.parent,
+            scrollable_frame,
             text="لوحة التحكم",
             font=('Arial', 20, 'bold')
         )
         title.pack(pady=20)
         
         # إطار الإحصائيات السريعة
-        stats_frame = ttk.Frame(self.parent)
+        stats_frame = ttk.Frame(scrollable_frame)
         stats_frame.pack(fill='x', padx=20, pady=10)
         
         # الحصول على البيانات
@@ -56,11 +77,15 @@ class DashboardUI:
         self.create_stat_card(stats_frame, "عدد الموردين", str(suppliers_count), "primary", 3)
         
         # إطار الرسوم البيانية
-        charts_frame = ttk.Frame(self.parent)
+        charts_frame = ttk.Frame(scrollable_frame)
         charts_frame.pack(fill='both', expand=True, padx=20, pady=10)
         
         # رسم بياني للمبيعات الأسبوعية
         self.create_weekly_sales_chart(charts_frame)
+        
+        # عرض Canvas و Scrollbar
+        main_canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
         
     def create_stat_card(self, parent, title, value, color, column):
         """إنشاء بطاقة إحصائيات"""
@@ -102,19 +127,33 @@ class DashboardUI:
             )
             sales.append(result[0] if result[0] else 0)
         
-        # إنشاء الرسم البياني
-        fig = Figure(figsize=(10, 4), dpi=100)
+        # إنشاء الرسم البياني مع دعم العربية
+        fig = Figure(figsize=(10, 5), dpi=100)
         ax = fig.add_subplot(111)
         
-        ax.bar(range(len(dates)), sales, color='#3498db', alpha=0.7)
-        ax.set_xlabel('التاريخ', fontsize=10)
-        ax.set_ylabel('المبيعات (ل.س)', fontsize=10)
-        ax.set_title('المبيعات الأسبوعية', fontsize=14, fontweight='bold')
+        # إعداد النصوص العربية
+        xlabel_text = prepare_arabic_text('التاريخ')
+        ylabel_text = prepare_arabic_text('المبيعات (ل.س)')
+        title_text = prepare_arabic_text('المبيعات الأسبوعية')
+        
+        ax.bar(range(len(dates)), sales, color='#3498db', alpha=0.7, width=0.6)
+        ax.set_xlabel(xlabel_text, fontsize=12, fontweight='bold')
+        ax.set_ylabel(ylabel_text, fontsize=12, fontweight='bold')
+        ax.set_title(title_text, fontsize=16, fontweight='bold', pad=20)
         ax.set_xticks(range(len(dates)))
-        ax.set_xticklabels([d.split('-')[2] + '/' + d.split('-')[1] for d in dates], rotation=0)
-        ax.grid(True, alpha=0.3)
+        
+        # تنسيق التواريخ بشكل أفضل
+        date_labels = [d.split('-')[2] + '/' + d.split('-')[1] for d in dates]
+        ax.set_xticklabels(date_labels, rotation=0, fontsize=10)
+        
+        # إضافة شبكة للوضوح
+        ax.grid(True, alpha=0.3, linestyle='--', linewidth=0.5)
+        ax.set_axisbelow(True)
+        
+        # تحسين المظهر
+        fig.tight_layout()
         
         # إضافة الرسم إلى الواجهة
         canvas = FigureCanvasTkAgg(fig, parent)
         canvas.draw()
-        canvas.get_tk_widget().pack(fill='both', expand=True)
+        canvas.get_tk_widget().pack(fill='both', expand=True, pady=10)

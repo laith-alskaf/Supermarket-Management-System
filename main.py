@@ -12,6 +12,7 @@ from ui.purchases_ui import PurchasesUI
 from ui.expenses_ui import ExpensesUI
 from ui.inventory_ui import InventoryUI
 from ui.reports_ui import ReportsUI
+from ui.about_ui import AboutUI
 
 class SupermarketApp:
     def __init__(self, root):
@@ -57,6 +58,7 @@ class SupermarketApp:
             ("💸 المصروفات", self.show_expenses),
             ("📦 المخزون", self.show_inventory),
             ("📈 التقارير", self.show_reports),
+            ("ℹ️ حول البرنامج", self.show_about),
         ]
         
         for text, command in buttons:
@@ -125,6 +127,11 @@ class SupermarketApp:
         """عرض التقارير"""
         self.clear_content()
         ReportsUI(self.content_frame, self.db)
+    
+    def show_about(self):
+        """عرض حول البرنامج"""
+        self.clear_content()
+        AboutUI(self.content_frame, self.db)
     
     def run(self):
         """تشغيل التطبيق"""
