@@ -6,11 +6,14 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 from utils.arabic_helper import prepare_arabic_text
 import matplotlib.font_manager as fm
+import pytz
 
 class DashboardUI:
     def __init__(self, parent, db):
         self.parent = parent
         self.db = db
+        # توقيت سوريا (GMT+3)
+        self.syria_tz = pytz.timezone('Asia/Damascus')
         self.setup_ui()
         
     def setup_ui(self):
@@ -47,7 +50,8 @@ class DashboardUI:
         stats_frame.pack(fill='x', padx=20, pady=10)
         
         # الحصول على البيانات
-        today = datetime.now().strftime('%Y-%m-%d')
+        syria_time = datetime.now(self.syria_tz)
+        today = syria_time.strftime('%Y-%m-%d')
         
         # مبيعات اليوم
         sales_today = self.db.fetch_one(
@@ -117,8 +121,9 @@ class DashboardUI:
         dates = []
         sales = []
         
+        syria_time = datetime.now(self.syria_tz)
         for i in range(6, -1, -1):
-            date = (datetime.now() - timedelta(days=i)).strftime('%Y-%m-%d')
+            date = (syria_time - timedelta(days=i)).strftime('%Y-%m-%d')
             dates.append(date)
             
             result = self.db.fetch_one(

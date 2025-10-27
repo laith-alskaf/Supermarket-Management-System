@@ -1,10 +1,14 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
+from datetime import datetime
+import pytz
 
 class InventoryUI:
     def __init__(self, parent, db):
         self.parent = parent
         self.db = db
+        # توقيت سوريا (GMT+3)
+        self.syria_tz = pytz.timezone('Asia/Damascus')
         self.setup_ui()
         self.load_inventory()
         
@@ -161,78 +165,186 @@ class InventoryUI:
         # نافذة التعديل
         dialog = tk.Toplevel(self.parent)
         dialog.title("تعديل الكمية")
-        dialog.geometry("400x300")
+        dialog.resizable(False, False)
         dialog.transient(self.parent)
         dialog.grab_set()
         
-        ttk.Label(dialog, text=f"المنتج: {name}", font=('Arial', 12, 'bold')).pack(pady=10)
-        ttk.Label(dialog, text=f"الكمية الحالية: {current_qty}", font=('Arial', 11)).pack(pady=10)
+        # الإطار الرئيسي مع padding
+        container = ttk.Frame(dialog, padding=25)
+        container.pack(fill='both', expand=True)
+        
+        # عنوان
+        ttk.Label(
+            container,
+            text="تعديل كمية المنتج",
+            font=('Arial', 16, 'bold'),
+            foreground='#2c3e50',
+            anchor='center'
+        ).pack(pady=(0, 20))
+        
+        # معلومات المنتج
+        info_frame = ttk.LabelFrame(container, text="معلومات المنتج", padding=15)
+        info_frame.pack(fill='x', pady=(0, 15))
+        
+        ttk.Label(
+            info_frame,
+            text=f"المنتج: {name}",
+            font=('Arial', 12, 'bold'),
+            anchor='e'
+        ).pack(fill='x', pady=5)
+        
+        ttk.Label(
+            info_frame,
+            text=f"الفئة: {category}",
+            font=('Arial', 11),
+            anchor='e'
+        ).pack(fill='x', pady=5)
+        
+        ttk.Label(
+            info_frame,
+            text=f"الكمية الحالية: {current_qty}",
+            font=('Arial', 11),
+            foreground='#27ae60',
+            anchor='e'
+        ).pack(fill='x', pady=5)
         
         # نوع العملية
-        ttk.Label(dialog, text="نوع العملية:", font=('Arial', 11)).pack(pady=5)
+        operation_frame = ttk.LabelFrame(container, text="نوع العملية", padding=15)
+        operation_frame.pack(fill='x', pady=(0, 15))
+        
         operation_var = tk.StringVar(value='add')
-        ttk.Radiobutton(dialog, text="إضافة", variable=operation_var, value='add').pack()
-        ttk.Radiobutton(dialog, text="سحب", variable=operation_var, value='remove').pack()
+        
+        ttk.Radiobutton(
+            operation_frame,
+            text="إضافة كمية",
+            variable=operation_var,
+            value='add'
+        ).pack(anchor='e', pady=5)
+        
+        ttk.Radiobutton(
+            operation_frame,
+            text="سحب كمية",
+            variable=operation_var,
+            value='remove'
+        ).pack(anchor='e', pady=5)
         
         # الكمية
-        ttk.Label(dialog, text="الكمية:", font=('Arial', 11)).pack(pady=10)
-        quantity_entry = ttk.Entry(dialog, font=('Arial', 11), width=15)
+        quantity_frame = ttk.LabelFrame(container, text="الكمية", padding=15)
+        quantity_frame.pack(fill='x', pady=(0, 15))
+        
+        quantity_entry = ttk.Entry(
+            quantity_frame,
+            font=('Arial', 14),
+            width=20,
+            justify='center'
+        )
         quantity_entry.pack(pady=5)
         quantity_entry.focus()
         
         # السبب
-        ttk.Label(dialog, text="السبب:", font=('Arial', 11)).pack(pady=10)
-        reason_entry = ttk.Entry(dialog, font=('Arial', 11), width=30)
+        reason_frame = ttk.LabelFrame(container, text="السبب (اختياري)", padding=15)
+        reason_frame.pack(fill='x', pady=(0, 15))
+        
+        reason_entry = ttk.Entry(
+            reason_frame,
+            font=('Arial', 11),
+            width=30
+        )
         reason_entry.pack(pady=5)
         
         def save():
             try:
-                quantity = float(quantity_entry.get())
+                qty_text = quantity_entry.get().strip()
+                if not qty_text:
+                    messagebox.showerror("خطأ", "يرجى إدخال الكمية", parent=dialog)
+                    quantity_entry.focus()
+                    return
+                
+                quantity = float(qty_text)
                 if quantity <= 0:
-                    raise ValueError()
-            except:
-                messagebox.showerror("خطأ", "يرجى إدخال كمية صحيحة")
+                    messagebox.showerror("خطأ", "يرجى إدخال كمية أكبر من صفر", parent=dialog)
+                    quantity_entry.focus()
+                    return
+            except ValueError:
+                messagebox.showerror("خطأ", "يرجى إدخال كمية صحيحة", parent=dialog)
+                quantity_entry.focus()
                 return
             
             operation = operation_var.get()
             reason = reason_entry.get().strip() or 'تعديل يدوي'
             
+            # الحصول على التاريخ والوقت الحالي بتوقيت سوريا
+            syria_time = datetime.now(self.syria_tz)
+            movement_date = syria_time.strftime('%Y-%m-%d %H:%M:%S')
+            
             if operation == 'add':
                 # إضافة
                 if self.db.execute_query(
-                    "UPDATE products SET quantity = quantity + ? WHERE id = ?",
-                    (quantity, product_id)
+                    "UPDATE products SET quantity = quantity + ?, updated_at = ? WHERE id = ?",
+                    (quantity, movement_date, product_id)
                 ):
                     self.db.execute_query(
-                        """INSERT INTO inventory_movements (product_id, movement_type, quantity, reason)
-                           VALUES (?, 'in', ?, ?)""",
-                        (product_id, quantity, reason)
+                        """INSERT INTO inventory_movements (product_id, movement_type, quantity, reason, movement_date)
+                           VALUES (?, 'in', ?, ?, ?)""",
+                        (product_id, quantity, reason, movement_date)
                     )
-                    messagebox.showinfo("نجاح", "تم إضافة الكمية بنجاح")
+                    messagebox.showinfo("نجاح", f"تم إضافة الكمية بنجاح\nالكمية الجديدة: {current_qty + quantity}", parent=dialog)
                     dialog.destroy()
                     self.load_inventory()
+                else:
+                    messagebox.showerror("خطأ", "فشل في إضافة الكمية", parent=dialog)
             else:
                 # سحب
                 if quantity > current_qty:
-                    messagebox.showerror("خطأ", "الكمية المطلوبة أكبر من المتوفر")
+                    messagebox.showerror("خطأ", f"الكمية المطلوبة ({quantity}) أكبر من المتوفر ({current_qty})", parent=dialog)
+                    quantity_entry.focus()
+                    quantity_entry.select_range(0, tk.END)
                     return
                 
                 if self.db.execute_query(
-                    "UPDATE products SET quantity = quantity - ? WHERE id = ?",
-                    (quantity, product_id)
+                    "UPDATE products SET quantity = quantity - ?, updated_at = ? WHERE id = ?",
+                    (quantity, movement_date, product_id)
                 ):
                     self.db.execute_query(
-                        """INSERT INTO inventory_movements (product_id, movement_type, quantity, reason)
-                           VALUES (?, 'out', ?, ?)""",
-                        (product_id, quantity, reason)
+                        """INSERT INTO inventory_movements (product_id, movement_type, quantity, reason, movement_date)
+                           VALUES (?, 'out', ?, ?, ?)""",
+                        (product_id, quantity, reason, movement_date)
                     )
-                    messagebox.showinfo("نجاح", "تم سحب الكمية بنجاح")
+                    messagebox.showinfo("نجاح", f"تم سحب الكمية بنجاح\nالكمية الجديدة: {current_qty - quantity}", parent=dialog)
                     dialog.destroy()
                     self.load_inventory()
+                else:
+                    messagebox.showerror("خطأ", "فشل في سحب الكمية", parent=dialog)
+        
+        # الأزرار
+        button_frame = ttk.Frame(container)
+        button_frame.pack(fill='x', pady=(15, 0))
         
         ttk.Button(
-            dialog,
-            text="حفظ",
+            button_frame,
+            text="✓ حفظ",
             command=save,
-            style='success.TButton'
-        ).pack(pady=20)
+            style='success.TButton',
+            width=18
+        ).pack(side='right', padx=5)
+        
+        ttk.Button(
+            button_frame,
+            text="✕ إلغاء",
+            command=dialog.destroy,
+            style='danger.TButton',
+            width=18
+        ).pack(side='left', padx=5)
+        
+        # ربط المفاتيح
+        quantity_entry.bind('<Return>', lambda e: save())
+        quantity_entry.bind('<KP_Enter>', lambda e: save())
+        dialog.bind('<Escape>', lambda e: dialog.destroy())
+        
+        # تحديد حجم النافذة
+        dialog.update_idletasks()
+        width = 600
+        height = 650
+        x = (dialog.winfo_screenwidth() // 2) - (width // 2)
+        y = (dialog.winfo_screenheight() // 2) - (height // 2)
+        dialog.geometry(f"{width}x{height}+{x}+{y}")

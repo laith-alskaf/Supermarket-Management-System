@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 from datetime import datetime
+import pytz
 
 class ExpensesUI:
     def __init__(self, parent, db):
@@ -50,7 +51,9 @@ class ExpensesUI:
         # التاريخ
         ttk.Label(form_frame, text="التاريخ:", font=('Arial', 11)).grid(row=4, column=1, padx=10, pady=10, sticky='e')
         self.date_entry = ttk.Entry(form_frame, font=('Arial', 11), width=30)
-        self.date_entry.insert(0, datetime.now().strftime('%Y-%m-%d'))
+        # استخدام التوقيت السوري
+        syria_time = datetime.now(self.syria_tz)
+        self.date_entry.insert(0, syria_time.strftime('%Y-%m-%d %H:%M:%S'))
         self.date_entry.grid(row=4, column=0, padx=10, pady=10)
         
         # الأزرار
@@ -207,4 +210,5 @@ class ExpensesUI:
         self.amount_usd_entry.delete(0, 'end')
         self.amount_usd_entry.insert(0, '0')
         self.date_entry.delete(0, 'end')
-        self.date_entry.insert(0, datetime.now().strftime('%Y-%m-%d'))
+        syria_time = datetime.now(self.syria_tz)
+        self.date_entry.insert(0, syria_time.strftime('%Y-%m-%d %H:%M:%S'))

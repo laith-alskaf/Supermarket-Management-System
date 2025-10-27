@@ -4,11 +4,14 @@ from datetime import datetime, timedelta
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
+import pytz
 
 class ReportsUI:
     def __init__(self, parent, db):
         self.parent = parent
         self.db = db
+        # توقيت سوريا (GMT+3)
+        self.syria_tz = pytz.timezone('Asia/Damascus')
         self.setup_ui()
         
     def setup_ui(self):
@@ -72,9 +75,10 @@ class ReportsUI:
             self.from_date_entry.config(state='normal')
             self.to_date_entry.config(state='normal')
             self.from_date_entry.delete(0, 'end')
-            self.from_date_entry.insert(0, (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d'))
+            syria_time = datetime.now(self.syria_tz)
+            self.from_date_entry.insert(0, (syria_time - timedelta(days=30)).strftime('%Y-%m-%d'))
             self.to_date_entry.delete(0, 'end')
-            self.to_date_entry.insert(0, datetime.now().strftime('%Y-%m-%d'))
+            self.to_date_entry.insert(0, syria_time.strftime('%Y-%m-%d'))
         else:
             self.from_date_entry.config(state='disabled')
             self.to_date_entry.config(state='disabled')
@@ -82,7 +86,8 @@ class ReportsUI:
     def get_date_range(self):
         """الحصول على نطاق التاريخ"""
         period = self.period_var.get()
-        today = datetime.now()
+        syria_time = datetime.now(self.syria_tz)
+        today = syria_time
         
         if period == 'اليوم':
             from_date = today.strftime('%Y-%m-%d')
